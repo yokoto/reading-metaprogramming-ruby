@@ -56,6 +56,9 @@ module OriginalAccessor
         instance_variable_get "@#{attribute}"
       end
       define_method "#{attribute}=" do |value|
+        # boolean値を代入した際のみ動的にメソッドが定義される、
+        # つまりクラスメソッドの中で動的にメソッドが定義されるため、
+        # define_singleton_methodを使う必要がある。
         # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/define.rb#L50-L54
         if [true, false].include?(value)
           define_singleton_method("#{attribute}?") do

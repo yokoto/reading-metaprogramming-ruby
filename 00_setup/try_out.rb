@@ -5,15 +5,16 @@ class TryOut
   # first_name=メソッドを持つ。これは、引数の内容でファーストネームを書き換える。
   # upcase_full_nameメソッドを持つ。これは、full_nameメソッドの結果をすべて大文字で返す。このメソッドは副作用を持たない。
   # upcase_full_name! メソッドを持つ。これは、upcase_full_nameの副作用を持つバージョンで、ファーストネーム、ミドルネーム、ラストネームをすべて大文字に変え、オブジェクトはその状態を記憶する
-  
-  def initialize(first_name, last_name, middle_name = nil)
+  attr_reader :first_name, :middle_name, :last_name
+
+  def initialize(first_name, middle_name = '', last_name)
     @first_name = first_name
-    @last_name = last_name
     @middle_name = middle_name
+    @last_name = last_name
   end
 
   def full_name
-    (middle_name? ? names_with_middle_name : names_without_middle_name).join(' ')
+    [first_name, middle_name, last_name].reject(&:empty?).join(' ')
   end
 
   def first_name=(new_first_name)
@@ -21,33 +22,13 @@ class TryOut
   end
 
   def upcase_full_name
-    upcase_name(full_name)
+    full_name.upcase
   end
 
   def upcase_full_name!
-    if middle_name?
-      @first_name, @last_name, @middle_name = names_with_middle_name.map { |name| upcase_name(name) }
-    else
-      @first_name, @last_name = names_without_middle_name.map { |name| upcase_name(name) }
+    %w[first_name middle_name last_name].each do |name|
+      instance_variable_set("@#{name}", send(name).upcase)
     end
     full_name
-  end
-
-  private
-
-  def middle_name?
-    !@middle_name.nil?
-  end
-
-  def names_with_middle_name
-    [@first_name, @last_name, @middle_name]
-  end
-
-  def names_without_middle_name
-    [@first_name, @last_name]
-  end
-
-  def upcase_name(name)
-    name.chars.map(&:upcase).join
   end
 end

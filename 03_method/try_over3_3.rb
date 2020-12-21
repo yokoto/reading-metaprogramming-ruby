@@ -135,7 +135,7 @@ class TryOver3::A4
 
     # const_set(name, value) -> object
     # モジュールに name で指定された名前の定数を value という値として定義し、value を返します。
-    const_set(const_name, klass)
+    # const_set(const_name, klass)
   end
 end
 
@@ -145,16 +145,24 @@ end
 module TryOver3::TaskHelper
   def self.included(klass)
     klass.define_singleton_method :task do |name, &task_block|
-      new_klass = Class.new do
-        define_singleton_method :run do
-          puts "start #{Time.now}"
-          block_return = task_block.call
-          puts "finish #{Time.now}"
-          block_return
+      define_singleton_method(name) do
+        puts "start #{Time.now}"
+        block_return = task_block.call
+        puts "finish #{Time.now}"
+        block_return
+      end
+
+      define_singleton_method(:const_missing) do |const_name|
+        new_klass_name = name.to_s.split("_").map{ |w| w[0] = w[0].upcase; w }.join
+        return super(const_name) if const_name.to_s != new_klass_name
+        
+        Class.new do
+          define_singleton_method(:run) do
+            warn "Warning: #{klass}::#{new_klass_name}.run is deprecated"
+            klass.public_send(name)
+          end
         end
       end
-      new_klass_name = name.to_s.split("_").map{ |w| w[0] = w[0].upcase; w }.join
-      const_set(new_klass_name, new_klass)
     end
   end
 end

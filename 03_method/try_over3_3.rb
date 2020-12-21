@@ -112,30 +112,32 @@ end
 # TryOver3::A4::Hoge.run
 # # => "run Hoge"
 # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/try_over3_3.rb#L94-L114
+# https://github.com/toshimaru/reading-metaprogramming-ruby/blob/8f6a46c761b0125ec1c4243a865455a47d3ba92f/03_method/try_over3_3.rb#L77-L95
 class TryOver3::A4
-  def self.runners=(args)
-    @runners = args
-  end
+  class << self
+    attr_accessor :runners
+    # def self.runners=(args)
+    #   @runners = args
+    # end
 
-  def self.runners
-    @runners
-  end
+    # def self.runners
+    #   @runners
+    # end
 
-  # p.66 存在しない定数を参照すると、Rubyは定数の名前を  const_missing にシンボルとして渡す。
-  # クラス名は単なる定数なので、ここではHogeという不明な参照が Module#const_missing に渡される。
-  def self.const_missing(const_name)
-    return super unless self.runners.include?(const_name)
+    # p.66 存在しない定数を参照すると、Rubyは定数の名前を  const_missing にシンボルとして渡す。
+    # クラス名は単なる定数なので、ここではHogeという不明な参照が Module#const_missing に渡される。
+    def const_missing(const_name)
+      return super unless self.runners.include?(const_name)
 
-    # そして、runnersが定数への参照を持っていれば、run という名前の特異メソッドを定義する。
-    klass = Class.new do |c|
-      c.define_singleton_method "run" do
-        "run #{const_name}"
+      # そして、runnersが定数への参照を持っていれば、run という名前の特異メソッドを定義する。
+      Class.new do
+        define_singleton_method(:run) { "run #{const_name}" }
       end
-    end
 
-    # const_set(name, value) -> object
-    # モジュールに name で指定された名前の定数を value という値として定義し、value を返します。
-    # const_set(const_name, klass)
+      # const_set(name, value) -> object
+      # モジュールに name で指定された名前の定数を value という値として定義し、value を返します。
+      # const_set(const_name, klass)
+    end
   end
 end
 

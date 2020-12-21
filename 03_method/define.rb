@@ -20,8 +20,10 @@ class A2
   def initialize(array)
     array.each do |arg|
       method_name = "hoge_#{arg}"
-      # コンストラクタの中で動的にメソッドを定義するので、
+      # p.119
+      # initializeに渡した配列に含まれる値(単一のオブジェクト)に対してメソッドを定義するので、
       # 特異メソッドを定義する必要がある。
+      # この時selfは arg（多分）。
       # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/define.rb#L19-L26
       # define_singleton_method(symbol) { ... } -> Symbol
       # self に特異メソッド name を定義します。
@@ -56,9 +58,11 @@ module OriginalAccessor
         instance_variable_get "@#{attribute}"
       end
       define_method "#{attribute}=" do |value|
-        # boolean値を代入した際のみ動的にメソッドが定義される、
-        # つまりクラスメソッドの中で動的にメソッドが定義されるため、
-        # define_singleton_methodを使う必要がある。
+        # p.119 特異メソッドの導入
+        # my_attr_accessorのsetterのレシーパとなる、
+        # 単一のオブジェクトに特化したメソッドを定義する必要があるため、
+        # 特異メソッドを定義するために
+        # Object#define_singleton_methodを使う必要がある。
         # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/define.rb#L50-L54
         if [true, false].include?(value)
           define_singleton_method("#{attribute}?") do
@@ -67,10 +71,6 @@ module OriginalAccessor
         end
         instance_variable_set("@#{attribute}", value)
       end
-      # # https://chaika.hatenablog.com/entry/2016/10/19/153728
-      # define_method "#{attribute}?" do |bool|
-      #   !!bool === bool
-      # end
     end
   end
 end

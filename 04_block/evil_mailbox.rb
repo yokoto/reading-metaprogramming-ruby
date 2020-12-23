@@ -17,3 +17,25 @@
 # 邪悪な機能
 # 1. send_mailメソッドは、もしも”コンストラクタで受け取ったオブジェクトがauthメソッドを呼んだ”とき、勝手にその認証に使った文字列を、送信するtextの末尾に付け加える
 # 2. つまり、コンストラクタが第2引数に文字列を受け取った時、その文字列はオブジェクト内に保存されないが、send_mailを呼び出したときにこっそりと勝手に送信される
+# https://github.com/willnet/reading-metaprogramming-ruby/blob/893eebca3ce7a1ed20c8597716716f24a04e7f74/04_block/evil_mailbox.rb#L21-L40
+# https://github.com/toshimaru/reading-metaprogramming-ruby/blob/8f6a46c761b0125ec1c4243a865455a47d3ba92f/04_block/evil_mailbox.rb#L21-L36
+class EvilMailbox
+  def initialize(obj, str = nil)
+    @obj = obj
+    @obj.auth(str) if str
+
+    define_singleton_method(:send_mail) do |to, body, &block|
+      result = obj.send_mail(to, body + str.to_s)
+      block.call(result) if block
+      nil
+    end
+  end
+
+  def receive_mail
+    obj.receive_mail
+  end
+
+  private
+
+  attr_reader :obj
+end

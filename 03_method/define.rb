@@ -19,11 +19,12 @@ end
 class A2
   def initialize(array)
     array.each do |arg|
+      # 2. initializeに渡した配列に含まれる値に対して、"hoge_" をprefixを付与したメソッドが存在すること
       method_name = "hoge_#{arg}"
       # p.119
-      # initializeに渡した配列に含まれる値(単一のオブジェクト)に対してメソッドを定義するので、
+      # initializeで生成されるインスタンス(単一のオブジェクト)に対してメソッドを定義するので、
       # 特異メソッドを定義する必要がある。
-      # この時selfは arg（多分）。
+      # この時selfは #<A:0x00005597a9a98490>
       # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/define.rb#L19-L26
       # define_singleton_method(symbol) { ... } -> Symbol
       # self に特異メソッド name を定義します。
@@ -36,6 +37,7 @@ class A2
     end
   end
 
+  # 1. "SmartHR Dev Team"と返すdev_teamメソッドが存在すること
   def dev_team
     'SmartHR Dev Team'
   end
@@ -49,6 +51,12 @@ end
 # NOTE: 分からなすぎたがp.169でそれっぽいコードを見つけた。
 module OriginalAccessor
   def self.included(base)
+    # extend(*modules) -> self
+    # 引数で指定したモジュールのインスタンスメソッドを self の特異メソッドとして追加します。
+    # Module#include は、クラス(のインスタンス)に機能を追加しますが、
+    # extend は、ある特定のオブジェクトだけにモジュールの機能を追加したいときに使用します。
+    # extend の機能は、「特異クラスに対する Module#include」と言い替えることもできます。
+    # https://docs.ruby-lang.org/ja/latest/method/Object/i/extend.html
     base.extend ClassMethods
   end
 

@@ -14,19 +14,13 @@ class TryOver3::A1
 
   def method_missing(name, *args)
     # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/try_over3_3.rb#L14-L18
-    if name =~ /^test_/
+    # https://github.com/willnet/reading-metaprogramming-ruby/blob/893eebca3ce7a1ed20c8597716716f24a04e7f74/03_method/try_over3_3.rb#L13-L19
+    if name.to_s.start_with?('test_')
       return run_test
+    else
+      super
     end
-
-    super
-    # super if !self.methods.grep(/^test_(.*)/) { TryOver3::A1.define_component $1 }
   end
-
-  # def self.define_component(method)
-  #   define_method(method) do
-  #     self.new.run_test
-  #   end
-  # end
 end
 
 # Q2
@@ -50,6 +44,8 @@ class TryOver3::A2Proxy
 
   def method_missing(name, *args)
     if source.respond_to?(name)
+      # https://nyakanishi.work/%E3%80%90ruby%E3%80%91public_send%E3%81%A8send%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6/
+      # “public_sendとsendの違い 端的に言うとpublicメソッドを呼べるかprivateメソッドも呼べるかの違いです。 ”
       return source.public_send(name, *args)
     end
 

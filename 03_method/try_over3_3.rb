@@ -143,6 +143,8 @@ end
 module TryOver3::TaskHelper
   def self.included(klass)
     klass.define_singleton_method :task do |name, &task_block|
+      # ↓からのスコープでは self == klass となる。
+      # つまり、include したクラスの特異メソッドを定義している。
       define_singleton_method(name) do
         puts "start #{Time.now}"
         block_return = task_block.call

@@ -62,6 +62,9 @@ end
 
 class C3 < MySuperClass
   prepend M1
+  # モジュールの機能追加は、クラスの継承関係の間にそのモジュールが挿入されることで実現されています。
+  # 従って、メソッドの探索などはスーパークラスよりもインクルードされたモジュールのほうが先に行われます
+  # https://docs.ruby-lang.org/ja/latest/method/Module/i/include.html
   include M3
   include M2
 
@@ -82,6 +85,15 @@ end
 class C4
 
   def increment
+    # セッターメソッドの場合はprivateメソッドでもself付きで呼び出す。
+    # https://qiita.com/jnchito/items/451018811842c2631e1e
+    # selfを付けないと、メソッド内部のローカル変数への代入なのか、
+    # セッターメソッドの呼び出しなのか曖昧であるため、
+    # セッターメソッドを呼ぶときはselfを必ずつけないといけない。
+    # https://www.uosansatox.biz/entry/2018/07/04/080000
+    # 逆に、セッター以外のメソッドを呼び出す時には、明示的にレシーバを指定する必要はない。
+    # selfでコードを汚さないようにする。
+    # Effective Ruby p.35
     self.value = (value.to_i + 1).to_s
   end
 
@@ -130,6 +142,8 @@ class C6
   using M1Refinements
 
   def name
+    # nameとすると、C6#nameを再帰的に呼び出してしまうためエラーになる。
+    # 継承チェーンを理解し、RefinementされたM1#nameを呼び出す必要がある。
     super
   end
 end

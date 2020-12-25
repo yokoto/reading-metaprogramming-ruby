@@ -180,7 +180,7 @@ class Computer
 end
 ```
 
-`Computer`クラスの中で、`define_component`は3回呼び出されている。Computerクラスに対して`define_method`を呼び出したいので、`define_component`はクラスメソッドにする必要がある。
+`Computer`クラスの中で、`define_component`は3回呼び出されている。**Computerクラスに対して`define_method`を呼び出したい**ので、`define_component`はクラスメソッドにする必要がある。
 
 これにより、メソッド定義の重複は取り除けるが、define_componentに指定する名前を全て列挙する必要がある。
 

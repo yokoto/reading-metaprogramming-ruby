@@ -32,7 +32,7 @@ a_method # => "ブロックがありません"
 a_method { "ブロックがあるよ！" } # => "ブロックがあるよ！"
 ```
 
-## Overview of 4.3 - 4章終わりまで
+## Overview of 4.3 - 4.3.4
 
 ### ブロックはクロージャ
 
@@ -194,11 +194,93 @@ counter # => 4
 * フラットスコープへの置き換え
   * class -> Class.new
   * module -> Module.new
-  * def Module.define_method
+  * def -> Module.define_method
 * 共有スコープ
   * 同じフラットスコープに複数のメソッドを定義して、スコープゲートで守り、束縛を共有すること。
 
+## Overview of 4.4 - 4.4.2
+
 ### instance_eval
+
+BasicObject#instance_eval は、オブジェクトのコンテキストでブロックを評価する。
+
+渡したブロックはレシーバを self にしてから評価されるので、レシーバの private メソッドやインスタンス変数にもアクセスできる。
+また、他のブロックと同じように、 instance_eval を定義したときの束縛も見える。
+
+instance_eval に渡したブロックのことをコンテキスト探査機と呼ぶ。
+
+#### instance_exec
+
+インスタンス変数は self によって決まる。
+
+下記の例では、instance_eval が self をレシーバに変更すると、呼び出し側のインスタンス変数 @y は C のインスタンス変数だと解釈され、 nil だと認識される。
+
+```rb
+class C
+  def initialize
+    @x = 1
+  end
+end
+
+class D
+  def twisted_method
+    @y= 2
+    C.new.instance_eval { "@x: #{@x}, @y: #{@y}" }
+  end
+end
+
+D.new.twisted_method # => "@x: 1, @y: "
+```
+
+@x と @y を同じスコープに入れるには、 instance_exec を使って @y の値をブロックに渡す。
+
+```rb
+class D
+  def twisted_method
+    @y = 2
+    C.new.instance_exec(@y) { |y| "@x: #{@x}, @y: #{y}" }
+  end
+end
+D.new.twisted_method # => "@x: 1, @y: 2"
+```
+
+### カプセル化の破壊
+
+コンテキスト探査機を実際に使うのは、 irb からオブジェクトの中身を見たい時や、テストの時。
+
+#### Padrinoの例
+
+Padrinoウェブフレームワークは、ウェブアプリケーションが扱うべきすべてのロギングを管理する Logger クラスを定義しており、 Logger クラスは、自身のインスタンス変数に設定を格納している。
+例えば、 @log_static が true であれば、静的ファイルへのアクセスを記録する。
+
+instance_eval を使えば、わざわざ新しいロガーを作成して設定するのではなく、コンテキスト探査機で既存のアプリケーションロガーの中身を見てから、その設定を変更することができる。
+
+```rb
+describe "PadrinoLogger" do
+  context 'for logger functionality' do
+    context "static asset logging" do
+      should 'not log static assets by default' do
+        # ...
+        get "/images/something.png"
+        assert_equal "Foo", body
+        assert_match "", Padrino.logger.log.string
+      end
+
+      should 'allow turning on static assets logging' do
+        Padrino.logger.instance_eval { @log_static = true }
+        # ...
+        get "/images/something.png"
+        assert_equal "Foo", body
+        assert_match /GET/, Padrino.logger.log.string
+        Padrino.logger.instance_eval { @log_static = false }
+      end
+    end
+
+    # ...
+```
+
+### クリーンルーム
+
 
 
 ### 呼び出し可能オブジェクト

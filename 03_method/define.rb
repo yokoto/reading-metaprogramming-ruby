@@ -65,6 +65,13 @@ module OriginalAccessor
       define_method attribute do
         instance_variable_get "@#{attribute}"
       end
+      # ブロックを与えた場合、
+      # 定義したメソッドの実行時にブロックがレシーバクラスのインスタンスの上で
+      # BasicObject#instance_eval される。
+      # https://docs.ruby-lang.org/ja/latest/method/Module/i/define_method.html
+      # つまり、ブロック内部の define_singleton_method のレシーバは
+      # define_method の self であり、
+      # OriginalAccessor を include した特定のオブジェクト。
       define_method "#{attribute}=" do |value|
         # p.119 特異メソッドの導入
         # my_attr_accessorのsetterのレシーパとなる、

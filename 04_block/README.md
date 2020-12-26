@@ -281,13 +281,85 @@ describe "PadrinoLogger" do
 
 ### クリーンルーム
 
+ブロックを評価するためだけに生成されたオブジェクトを、 **クリーンルーム** と呼ぶ。
 
+下記の例では、 クリーンルームである CleanRoom クラスに、ブロックから呼び出す current_temperature という便利なメソッドが用意されている。
+
+```rb
+class CleanRoom
+  def current_temperature
+    # ...
+  end
+end
+
+clean_room = CleanRoom.new
+clean_room.instance_eval do
+  if current_temperature < 20
+    # TODO: ジャケットを着る
+  end
+end
+```
 
 ### 呼び出し可能オブジェクト
 
-#### Proc
+#### Procオブジェクト
 
-#### lambda
+Rubyの標準ライブラリに用意されている Proc クラスは、ブロックをオブジェクトにしたもの。
+
+Proc.new にブロックを渡すことで Proc を生成し、
+Proc#call でオブジェクトになったブロックを**遅延評価**する。
+
+```rb
+inc = Proc.new { |x| x + 1 }
+# いろんなコード...
+inc.call(2) # => 3
+```
+
+Procは、ブロックを Proc に変換する2つのカーネルメソッド lambda 、 proc によっても生成することができる。
+
+```rb
+dec = lambda { |x| x - 1 }
+dec.class # => Proc
+dec.call(2) # => 1
+```
+
+以下の二つのコードは同じ意味。
+
+```rb
+p = ->(x) { x + 1 }
+p = lambda { |x| x + 1 }
+```
+
+#### ＆修飾
+
+ブロックは、メソッドに渡す無名引数のようなもの。
+通常は、メソッドの中で yield を使って実行するが、 yieldで足りないケースが2つある。
+
+* 他のメソッドにブロックを渡したい時
+* ブロックを Proc に変換したい時
+
+引数列の最後に置いて、名前の前に ＆ の印をつけることで、
+渡されたブロックを他のメソッドに渡すことができる。
+逆に、Proc をブロックに戻したい場合にも、＆修飾を使う。
+
+下記の例では、do_math メソッドに渡されたブロックを受け取って、それを Proc に変換している。
+math メソッドを呼び出す時に Proc である operation に ＆ 修飾をつけて、
+ブロックに変換してからメソッドに渡している。
+
+```rb
+def math(a, b)
+  yield(a, b)
+end
+
+def do_math(a, b, &operation)
+  math(a, b, &operation)
+end
+
+do_math(2, 3) { |x, y| x * y } # => 6
+```
+
+
+#### 「Proc」対「lambda」
 
 ### ドメイン特化言語を書く
 

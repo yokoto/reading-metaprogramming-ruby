@@ -14,7 +14,7 @@ class TryOut
   end
 
   def full_name
-    [first_name, middle_name, last_name].reject(&:empty?).join(' ')
+    names.reject(&:empty?).join(' ')
   end
 
   def upcase_full_name
@@ -32,8 +32,10 @@ class TryOut
   attr_reader :first_name, :middle_name, :last_name
 
   def upcase_names!
-    %w[first_name middle_name last_name].each do |name|
-      instance_variable_set("@#{name}", send(name).upcase)
-    end
+    names.each(&:upcase!)
+  end
+
+  def names
+    [first_name, middle_name, last_name]
   end
 end

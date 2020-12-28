@@ -300,7 +300,8 @@ clean_room.instance_eval do
 end
 ```
 
-## Overview of 4.5 - 4.5.4
+## Overview of 4.5 - 4章終わりまで
+
 ### 呼び出し可能オブジェクト
 
 #### Procオブジェクト
@@ -510,3 +511,100 @@ lambda もほぼ厳密である。Proc とブロックは寛容である。
 ß
 ### ドメイン特化言語を書く
 
+#### Redflag の作成
+
+Redflag プロジェクトは、営業部で様々なイベントが発生した時にメッセージを送信するユーティリティ。
+営業部の人がイベントを定義できる簡単なドメイン 特化言語（DSL）を書く。
+
+Redflags DSL
+
+```rb
+# blocks/redflag_3/events.rb
+setup do
+  puts "空の高さを設定"
+  @sky_height = 100
+end
+
+setup do
+  puts "山の高さを設定"
+  @mountains_height = 200
+end
+
+event "空が落ちてくる" do
+  @sky_height < 300
+end
+
+event "空が近づいている" do
+  @sky_height < @mountains_height
+end
+
+event "もうダメだ...手遅れ" do
+  @sky_height < 0
+end
+
+# => 空の高さを設定
+#    山の高さを設定
+#    ALRET: 空が落ちてくる
+#    空の高さを設定
+#    山の高さを設定
+#    ALRET: 空が近づいている
+#    空の高さを設定
+#    山の高さを設定
+# ...
+```
+
+```rb
+# blocks/redflag_4/redflag.rb
+lambda {
+  setups = []
+  events = []
+
+  Kernel.send :define_method, :setup do |&block|
+    setups << block
+  end
+
+  Kernel.send :define_method, :event do |description, &block|
+    events << {:description => description, :condition => block}
+  end
+
+  Kernel.send :define_method, :each_setup do |&block|
+    setups.each do |setup|
+      block.call setup
+    end
+  end
+
+  Kernel.send :define_method, :each_event do |&block|
+    events.each do |event|
+      block.call event
+    end
+  end
+}.call
+
+load 'events.rb'
+
+each_event do |event|
+  env = Object.new
+  each_setup do |setup|
+    evn.instance_eval &setup
+  end
+  puts "ALERT: #{event[:description]}" if env.instance_eval &(event[:condition])
+end
+```
+
+## まとめ
+
+* スコープゲートとは、新しいスコープをオープンする3つのキーワードのこと。
+  * class 、 module 、 def
+* フラットスコープを使って、スコープを横断して束縛を見ることができる。
+* フラットスコープへの置き換え
+  * class -> Class.new
+  * module -> Module.new
+  * def -> Module.define_method
+* 共有スコープとは、全てのメソッドを同じフラットスコープに定義する方法。
+* コンテキスト探査機とは、オブジェクトのスコープでコードを実行する方法。
+  * isntance_eval 、 instance_exec 、 class_exec
+* クリーンルームとは、ブロックを評価するためだけに生成されたオブジェクトのこと。
+  * 例: obj = Object.new
+* ブロックとオブジェクト（Proc）は、＆修飾 によって相互に変換できる。
+* メソッドとオブジェクト（Method や UnboundMethod）はModule#instance_method や Method#unbind 、 UnboundMethod#bind によって相互に変換することができる。
+* 呼び出し可能オブジェクト（ブロック、Proc 、lambda）は、return キーワードの意味や引数のチェック方法について動作が異なり、評価されるスコープにおいて通常のメソッドと異なる。

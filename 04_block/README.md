@@ -300,6 +300,7 @@ clean_room.instance_eval do
 end
 ```
 
+## Overview of 4.5 - 4.5.4
 ### 呼び出し可能オブジェクト
 
 #### Procオブジェクト
@@ -358,8 +359,154 @@ end
 do_math(2, 3) { |x, y| x * y } # => 6
 ```
 
-
 #### 「Proc」対「lambda」
 
+一般的には、lambdaの方がメソッドに似ているので、Procよりも直感的であると言われ、
+return を呼ぶと単に終了してくれ、項数に厳しいという理由から、
+Proc の機能が必要でない限り、lambdaが選ばれる。
+
+lambda で作った Proc は、以下の点で他の Proc とは異なる。
+
+##### 1. return キーワードの意味
+
+lambdaの場合は、 return は単に戻るだけ。
+
+```rb
+def double(callable_object)
+  callable_object.call * 2
+end
+
+1 = lambda { return 10 }
+double(1) # => 20
+```
+
+Proc の場合は、 Procが定義されたスコープから戻る。
+
+```rb
+def another_double
+  p = Proc.new { return 10 } # ここから戻る。
+  result = p.call
+  return result * 2 # ここまで来ない！
+end
+
+another_double # => 10
+```
+
+以下のプログラムでは、p が定義されたトップレベルのスコープからは戻れないため、失敗する。
+
+```rb
+def double(callable_object)
+  callable_object.call * 2
+end
+
+p = Proc.new { return 10 }
+double(p) # => LocalJumpError
+```
+
+明示的な return を使わないようにし、このようなミスを回避する必要がある。
+
+```rb
+p = Proc.new { 10 }
+double(p) # => 20
+```
+
+##### 2. 引数のチェック方法
+
+引数の数について、Proc は多い部分を切り落とし、足りない引数には nil を割り当ててくれるが、
+違った項数で lambda を呼び出すと、 ArgumentError になる。
+
+#### Methodオブジェクト
+
+Object#method を呼び出すと、メソッドそのものを Method オブジェクトとして取得できる。
+Method オブジェクトは、あとで Method#call を使って実行できる。
+
+Ruby 2.1 には、Kernel#singelton_method があり、特異メソッドの名前から Method オブジェクトに変換することもできる。
+
+Method オブジェクトはブロックや lambda に似ているが、
+lambda は定義されたスコープで評価される（クロージャ）一方、
+Method は所属するオブジェクトのスコープで評価される。
+
+
+#### UnboundMethod
+
+UnboundMethod は、元のクラスやモジュールから引き離されたメソッドのようなもの。
+
+https://docs.ruby-lang.org/ja/latest/class/UnboundMethod.html
+
+> レシーバを持たないメソッドを表すクラスです。呼び出すためにはレシーバにバインドする必要があります。
+
+> Module#instance_method や Method#unbind により生成し、後で UnboundMethod#bind によりレシーバを割り当てた Method オブジェクトを作ることができます。
+
+```rb
+module MyModule
+  def my_method
+    42
+  end
+end
+
+unbound = MyModule.instance_method(:my_method)
+unbound.class # => UnboundMethod
+```
+
+UnboundMethod を呼び出すことはできないが、そこから通常のメソッドを生成することは可能。
+UnboundMethod#bind を使って、 UnboundMethod をオブジェクトに束縛する。
+
+ただし、 UnboundMethod は元のクラスと同じクラス（またはサブクラス）のオブジェクトにしか束縛できないため、以下の例のように、Module#define_method に渡すことで束縛する。
+
+```rb
+String.send :define_method, :another_method, unbound
+
+"abc".another_method # => 42
+```
+
+String の define_method は private メソッドのため、動的メソッドを使って呼び出す。
+
+#### Active Supportの例
+
+ActiveSupport には「自動読み込み」システムがあり、定数を使った時に、それが定義されたファイルを自動的に読み込むクラスやモジュールがある。
+例えば、標準の Kernle#load メソッドを再定義する Lodabale というモジュールが含まれている。
+
+クラスが Lodable をインクルードした時に、 Lodable#load が Kernel#load よりも継承チェーンの下にあれば、 load の呼び出しは Lodable#load にたどり着く。
+インクルードした Lodable を削除、つまり通常の Kernel#load を使いたくなった場合、下記のようなコードによってそれを行う。
+
+Lodable.exclude_from(MyClass) を呼び出すと、上記のコードが instance_method を呼び出して、元の Kernel#load を UnboundMethod として取得する。
+そして、（コンテキスト探査機を使って）MyClass にその新しい load メソッドを定義する。
+> https://docs.ruby-lang.org/ja/latest/method/Module/i/class_eval.html
+> モジュールのコンテキストで文字列 expr またはモジュール自身をブロックパラメータとするブロックを評価してその結果を返します。
+> モジュールのコンテキストで評価するとは、実行中そのモジュールが self になるということです。つまり、そのモジュールの定義式の中にあるかのように実行されます。
+> ただし、ローカル変数は module_eval/class_eval の外側のスコープと共有します。
+
+その結果、 MyClass#load が Kernel#load と同等になる。
+これは、Lodable の load メソッドをオーバーライドしている。
+
+```rb
+module Lodable
+  def self.exclude_from(base)
+    base.class_eval { define_method(:load, Kernel.instance_method(:load)) }
+  end
+
+  # ...
+end
+```
+
+UnboundMethod によって、Kernel#load と MyClass#load はよく似ているが、Kernel#load と Lodable#load は全く呼び出されない。
+
+#### まとめ
+
+呼び出し可能オブジェクトとは、評価ができて、スコープを持ち運べるコードのこと。
+呼び出し可能オブジェクトになれるのは以下。
+
+* ブロック（「オブジェクト」ではないが「呼び出し可能」）：定義されたスコープで評価される。
+* Proc：Proc クラスのオブジェクト。ブロックのように、定義されたスコープで評価される。
+* lambda：これも Proc クラスのオブジェクトだが、通常の Procとは微妙に異なる。ブロックや Proc と同じくクロージャであり、定義されたスコープで評価される。
+* メソッド：オブジェクトに束縛され、オブジェクトのスコープで評価される。オブジェクトのスコープから引き離し、他のオブジェクトに束縛することもできる。
+
+呼び出し可能オブジェクトは、種類によって動作に微妙な違いがある。
+メソッドと lambda では、 return で呼び出し可能オブジェクトから戻る。
+一方、Proc とブロックでは、呼び出し可能オブジェクトの元のコンテキストから戻る。
+また、呼び出し時の項数の違いに対する反応も異なる。メソッドは厳密である。
+lambda もほぼ厳密である。Proc とブロックは寛容である。
+こうした違いはあるにせよ、Proc.new 、 Method#to_proc 、 ＆修飾などを使って、ある呼び出し可能オブジェクトから別の呼び出し可能オブジェクトに変換することができる。
+ß
 ### ドメイン特化言語を書く
 

@@ -35,7 +35,7 @@ a_method { "ブロックがあるよ！" } # => "ブロックがあるよ！"
 * ブロックの中で定義された束縛は、ブロックが終了した時点で消える。
   * 上記の特性から、ブロックはクロージャであると言われる。
 
-下記の例では、メソッドにある束縛はブロックからは見えないため、
+下記の例では、メソッドにある束縛はブロックからは見えないため、  
 メソッドの束縛ではなく、ブロックが定義されたときの束縛が包み込まれる。
 
 ```rb
@@ -48,7 +48,7 @@ x = "Hello"
 my_method { |y| "#{x}, #{y} world" } # => "Hello, cruel world"
 ```
 
-下記の例では、ブロックの中で新しい束縛を定義している。
+下記の例では、ブロックの中で新しい束縛を定義している。  
 local_to_block はトップレベルのスコープで定義されていないため、エラーになる。
 
 ```rb
@@ -99,7 +99,7 @@ my_method # => "トップレベルの変数@var"
 
 ### スコープゲート
 
-プログラムがスコープを変えると、新しい束縛と置き換えられる。
+プログラムがスコープを変えると、新しい束縛と置き換えられる。  
 
 プログラムがスコープを切り替えて、新しいスコープをオープンする3つのキーワードを、**スコープゲート** と呼ぶ。
 
@@ -109,11 +109,11 @@ my_method # => "トップレベルの変数@var"
 
 ### スコープのフラット化
 
-スコープゲートを超えて束縛を渡すような難しい局面に遭遇することがある。
+スコープゲートを超えて束縛を渡すような難しい局面に遭遇することがある。  
 
-スコープゲートをメソッド呼び出しに変えると、他のスコープの変数が見えるようになる。
-これを、**入れ子構造のレキシカルスコープ** または **スコープのフラット化** と呼ぶ。
-2つのスコープを一緒の場所に押し込めて、変数を共有する魔術を **フラットスコープ** と呼ぶ。
+スコープゲートをメソッド呼び出しに変えると、他のスコープの変数が見えるようになる。  
+これを、**入れ子構造のレキシカルスコープ** または **スコープのフラット化** と呼ぶ。  
+2つのスコープを一緒の場所に押し込めて、変数を共有する魔術を **フラットスコープ** と呼ぶ。  
 
 下記の例では、classのスコープを通り抜けて my_var を持ち運ベるようにコードを変更している。
 
@@ -163,7 +163,7 @@ puts MyClass.new.my_method
 
 ### スコープの共有
 
-複数のメソッドで変数を共有したいが、その他からは見えないようにするために、
+複数のメソッドで変数を共有したいが、その他からは見えないようにするために、  
 すべてのメソッドを同じフラットスコープに定義する方法を、**共有スコープ** と呼ぶ。
 
 ```rb
@@ -284,9 +284,7 @@ BasicObjectのインスタンスが最適。
 
 ## Overview of 4.5 - 4章終わりまで
 
-### 呼び出し可能オブジェクト
-
-#### Procオブジェクト
+### Procオブジェクト
 
 * Proc クラスは、ブロックをオブジェクトにしたもの。
 * Proc.new にブロックを渡すことで Proc を生成する。
@@ -314,21 +312,15 @@ p = ->(x) { x + 1 }
 p = lambda { |x| x + 1 }
 ```
 
-#### ＆修飾
+### ＆修飾
 
-ブロックは、メソッドに渡す無名引数のようなもの。
-通常は、メソッドの中で yield を使って実行するが、 yieldで足りないケースが2つある。
-
-* 他のメソッドにブロックを渡したい時
-* ブロックを Proc に変換したい時
-
-引数列の最後に置いて、名前の前に ＆ の印をつけることで、
-渡されたブロックを他のメソッドに渡すことができる。
-逆に、Proc をブロックに戻したい場合にも、＆修飾を使う。
-
-下記の例では、do_math メソッドに渡されたブロックを受け取って、それを Proc に変換している。
-math メソッドを呼び出す時に Proc である operation に ＆ 修飾をつけて、
-ブロックに変換してからメソッドに渡している。
+* ブロックは、メソッドに渡す無名引数のようなもの。
+* 通常はメソッドの中で yield を使って実行する。
+* 以下のケースでは **＆修飾** を使う。
+  * 他のメソッドにブロックを渡したい時
+    * 引数列の最後に置いて、名前の前に ＆ を付ける。
+  * ブロックを Proc に変換したい時
+  * Proc をブロックに戻したい時
 
 ```rb
 def math(a, b)
@@ -342,17 +334,16 @@ end
 do_math(2, 3) { |x, y| x * y } # => 6
 ```
 
-#### 「Proc」対「lambda」
+### 「Proc」対「lambda」
 
-一般的には、lambdaの方がメソッドに似ているので、Procよりも直感的であると言われ、
-return を呼ぶと単に終了してくれ、項数に厳しいという理由から、
-Proc の機能が必要でない限り、lambdaが選ばれる。
+* lambdaの方がメソッドに似ていて直感的。
+  * return を呼ぶと終了してくれる。
+  * 項数に厳しい。
 
-lambda で作った Proc は、以下の点で他の Proc とは異なる。
+#### 1. return キーワードの意味
 
-##### 1. return キーワードの意味
-
-lambdaの場合は、 return は単に戻るだけ。
+* lambda の場合、単に戻るだけ。
+* Proc の場合、 Procが定義されたスコープから戻る。
 
 ```rb
 def double(callable_object)
@@ -362,8 +353,6 @@ end
 1 = lambda { return 10 }
 double(1) # => 20
 ```
-
-Proc の場合は、 Procが定義されたスコープから戻る。
 
 ```rb
 def another_double
@@ -393,32 +382,48 @@ p = Proc.new { 10 }
 double(p) # => 20
 ```
 
-##### 2. 引数のチェック方法
+#### 2. 引数のチェック方法
 
-引数の数について、Proc は多い部分を切り落とし、足りない引数には nil を割り当ててくれるが、
-違った項数で lambda を呼び出すと、 ArgumentError になる。
+* Proc の場合、多い引数を切り落とし、足りない引数には nil を割り当てる。
+* lambda の場合、違った項数で呼び出すと、ArgumentError になる。
 
-#### Methodオブジェクト
+### Methodオブジェクト
 
-Object#method を呼び出すと、メソッドそのものを Method オブジェクトとして取得できる。
-Method オブジェクトは、あとで Method#call を使って実行できる。
+* Method オブジェクト
+  * Object#method を呼び出すと、メソッドそのもの（Method オブジェクト）を取得できる。
+  * Method#call を使って実行できる。
+  * Ruby 2.1~ Kernel#singelton_method を呼び出すと、特異メソッドの名前から Method オブジェクトを取得できる。
+  * ブロックや lambda に似ている
+    * lambda
+      * 定義されたスコープで評価される（クロージャ）
+    * Method
+      * 所属するオブジェクトのスコープで評価される
 
-Ruby 2.1 には、Kernel#singelton_method があり、特異メソッドの名前から Method オブジェクトに変換することもできる。
+```rb
+class MyClass
+  def initialize(value)
+    @x = value
+  end
 
-Method オブジェクトはブロックや lambda に似ているが、
-lambda は定義されたスコープで評価される（クロージャ）一方、
-Method は所属するオブジェクトのスコープで評価される。
+  def my_method
+    @x
+  end
+end
 
+object = MyClass.new(1)
+m = object.method :my_method # Method オブジェクトを取得
+m.call # => 1
+```
 
-#### UnboundMethod
+### UnboundMethod
 
-UnboundMethod は、元のクラスやモジュールから引き離されたメソッドのようなもの。
+* UnboundMethod
+  * 特殊なケースでのみ使用する。
+  * 直接呼び出すことができない、元のクラスやモジュールから引き離されたメソッドのようなもの。
+  * Module#instance_method や Method#unbind により生成する。
+  * UnboundMethod#bind によりレシーバを割り当てた Method オブジェクトを作る（オブジェクトに束縛する）ことができる。
 
 https://docs.ruby-lang.org/ja/latest/class/UnboundMethod.html
-
-> レシーバを持たないメソッドを表すクラスです。呼び出すためにはレシーバにバインドする必要があります。
-
-> Module#instance_method や Method#unbind により生成し、後で UnboundMethod#bind によりレシーバを割り当てた Method オブジェクトを作ることができます。
 
 ```rb
 module MyModule
@@ -431,10 +436,7 @@ unbound = MyModule.instance_method(:my_method)
 unbound.class # => UnboundMethod
 ```
 
-UnboundMethod を呼び出すことはできないが、そこから通常のメソッドを生成することは可能。
-UnboundMethod#bind を使って、 UnboundMethod をオブジェクトに束縛する。
-
-ただし、 UnboundMethod は元のクラスと同じクラス（またはサブクラス）のオブジェクトにしか束縛できないため、以下の例のように、Module#define_method に渡すことで束縛する。
+UnboundMethod は元のクラスと同じクラス（またはサブクラス）のオブジェクトにしか束縛できないため、以下の例のように、Module#define_method に渡すことで束縛する。
 
 ```rb
 String.send :define_method, :another_method, unbound
@@ -444,16 +446,14 @@ String.send :define_method, :another_method, unbound
 
 String の define_method は private メソッドのため、動的メソッドを使って呼び出す。
 
-#### Active Supportの例
+### Active Supportの例
 
-ActiveSupport には「自動読み込み」システムがあり、定数を使った時に、それが定義されたファイルを自動的に読み込むクラスやモジュールがある。
-例えば、標準の Kernle#load メソッドを再定義する Lodabale というモジュールが含まれている。
+ActiveSupport には「自動読み込み」システムがあり、定数を使った時に、それが定義されたファイルを自動的に読み込むクラスやモジュールがある。  
+例えば、標準の Kernle#load メソッドを再定義する Lodabale というモジュールが含まれている。  
 
-クラスが Lodable をインクルードした時に、 Lodable#load が Kernel#load よりも継承チェーンの下にあれば、 load の呼び出しは Lodable#load にたどり着く。
+クラスが Lodable をインクルードした時に、 Lodable#load が   Kernel#load よりも継承チェーンの下にあれば、 load の呼び出しは  Lodable#load にたどり着く。
 インクルードした Lodable を削除、つまり通常の Kernel#load を使いたくなった場合、下記のようなコードによってそれを行う。
 
-Lodable.exclude_from(MyClass) を呼び出すと、上記のコードが instance_method を呼び出して、元の Kernel#load を UnboundMethod として取得する。
-そして、（コンテキスト探査機を使って）MyClass にその新しい load メソッドを定義する。
 > https://docs.ruby-lang.org/ja/latest/method/Module/i/class_eval.html
 > モジュールのコンテキストで文字列 expr またはモジュール自身をブロックパラメータとするブロックを評価してその結果を返します。
 > モジュールのコンテキストで評価するとは、実行中そのモジュールが self になるということです。つまり、そのモジュールの定義式の中にあるかのように実行されます。
@@ -472,25 +472,28 @@ module Lodable
 end
 ```
 
-UnboundMethod によって、Kernel#load と MyClass#load はよく似ているが、Kernel#load と Lodable#load は全く呼び出されない。
+Lodable.exclude_from(MyClass) を呼び出すと、上記のコードが instance_method を呼び出して、元の Kernel#load を UnboundMethod として取得する。  
+そして、（コンテキスト探査機 class_eval を使って）MyClass にその新しい load メソッドを定義する。  
 
-#### まとめ
+UnboundMethod によって、Kernel#load と MyClass#load はよく似ているが、Kernel#load と Lodable#load は全く呼び出されない。  
 
-呼び出し可能オブジェクトとは、評価ができて、スコープを持ち運べるコードのこと。
-呼び出し可能オブジェクトになれるのは以下。
+### 呼び出し可能オブジェクトのまとめ
+
+呼び出し可能オブジェクトとは、評価ができて、スコープを持ち運べるコードのこと。  
+呼び出し可能オブジェクトになれるのは以下。  
 
 * ブロック（「オブジェクト」ではないが「呼び出し可能」）：定義されたスコープで評価される。
 * Proc：Proc クラスのオブジェクト。ブロックのように、定義されたスコープで評価される。
 * lambda：これも Proc クラスのオブジェクトだが、通常の Procとは微妙に異なる。ブロックや Proc と同じくクロージャであり、定義されたスコープで評価される。
 * メソッド：オブジェクトに束縛され、オブジェクトのスコープで評価される。オブジェクトのスコープから引き離し、他のオブジェクトに束縛することもできる。
 
-呼び出し可能オブジェクトは、種類によって動作に微妙な違いがある。
-メソッドと lambda では、 return で呼び出し可能オブジェクトから戻る。
-一方、Proc とブロックでは、呼び出し可能オブジェクトの元のコンテキストから戻る。
-また、呼び出し時の項数の違いに対する反応も異なる。メソッドは厳密である。
-lambda もほぼ厳密である。Proc とブロックは寛容である。
-こうした違いはあるにせよ、Proc.new 、 Method#to_proc 、 ＆修飾などを使って、ある呼び出し可能オブジェクトから別の呼び出し可能オブジェクトに変換することができる。
-ß
+呼び出し可能オブジェクトは、種類によって動作に微妙な違いがある。  
+メソッドと lambda では、 return で呼び出し可能オブジェクトから戻る。  
+一方、Proc とブロックでは、呼び出し可能オブジェクトの元のコンテキストから戻る。  
+また、呼び出し時の項数の違いに対する反応も異なる。メソッドは厳密である。  
+lambda もほぼ厳密である。Proc とブロックは寛容である。  
+こうした違いはあるにせよ、Proc.new 、 Method#to_proc 、 ＆修飾などを使って、ある呼び出し可能オブジェクトから別の呼び出し可能オブジェクトに変換することができる。  
+
 ### ドメイン特化言語を書く
 
 #### Redflag の作成
@@ -584,9 +587,9 @@ end
   * def -> Module.define_method
 * 共有スコープとは、全てのメソッドを同じフラットスコープに定義する方法。
 * コンテキスト探査機とは、オブジェクトのスコープでコードを実行する方法。
-  * isntance_eval 、 instance_exec 、 class_exec
+  * isntance_eval 、 instance_exec 、 class_eval
 * クリーンルームとは、ブロックを評価するためだけに生成されたオブジェクトのこと。
-  * 例: obj = Object.new
+  * 例: obj = Object.new、 ins = BasicObject.new
 * ブロックとオブジェクト（Proc）は、＆修飾 によって相互に変換できる。
 * メソッドとオブジェクト（Method や UnboundMethod）はModule#instance_method や Method#unbind 、 UnboundMethod#bind によって相互に変換することができる。
 * 呼び出し可能オブジェクト（ブロック、Proc 、lambda）は、return キーワードの意味や引数のチェック方法について動作が異なり、評価されるスコープにおいて通常のメソッドと異なる。

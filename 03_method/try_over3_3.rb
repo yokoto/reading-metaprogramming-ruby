@@ -12,14 +12,28 @@ class TryOver3::A1
     nil
   end
 
+  # https://docs.ruby-lang.org/ja/latest/method/BasicObject/i/method_missing.html
+  # BasicObject#method_missing
+  # method_missing(name, *args) -> object
+  # method_missing を override する場合は
+  # 対象のメソッド名に対して Object#respond_to? が真を返すようにしてください。
+  # そのためには、Object#respond_to_missing? も同様に override する必要があります。
   def method_missing(name, *args)
     # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/try_over3_3.rb#L14-L18
     # https://github.com/willnet/reading-metaprogramming-ruby/blob/893eebca3ce7a1ed20c8597716716f24a04e7f74/03_method/try_over3_3.rb#L13-L19
-    if name.to_s.start_with?('test_')
-      return run_test
-    else
-      super
-    end
+    return run_test if start_with_test_?(name)
+
+    super
+  end
+
+  def respond_to_missing?(name)
+    start_with_test_?(name) || super
+  end
+
+  private
+
+  def start_with_test_?(name)
+    name.to_s.start_with?('test_')
   end
 end
 
@@ -42,6 +56,8 @@ class TryOver3::A2Proxy
 
   private
 
+  attr_reader :source
+
   def method_missing(name, *args)
     if source.respond_to?(name)
       # https://nyakanishi.work/%E3%80%90ruby%E3%80%91public_send%E3%81%A8send%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6/
@@ -58,8 +74,6 @@ class TryOver3::A2Proxy
   def respond_to_missing?(method, include_private = false)
     source.respond_to?(method) || super
   end
-
-  attr_reader :source
 end
 
 
@@ -70,29 +84,24 @@ end
 # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/try_over3_3.rb#L59-L86
 module TryOver3::OriginalAccessor2
   def self.included(mod)
+    # Class オブジェクト（Classクラスのインスタンス）に対して特異メソッドを定義している。
     mod.define_singleton_method :my_attr_accessor do |attr_sym|
+      # Class オブジェクトの特異クラスにメソッドを定義している。
       define_method attr_sym do
         @attr
       end
 
       define_method "#{attr_sym}=" do |value|
-        if [true, false].include?(value)
-          if !respond_to?("#{attr_sym}?")
-            self.class.define_method "#{attr_sym}?" do
-              @attr == true
-            end
+        if [true, false].include?(value) && !respond_to?("#{attr_sym}?")
+          self.class.define_method "#{attr_sym}?" do
+            @attr == true
           end
-        else
-          if respond_to?(attr_sym)
-            # このモジュールのインスタンスメソッド name を未定義にします。
-            # undef_method(*name) -> self
-            # スーパークラスに同名のメソッドがあっても
-            # その呼び出しはエラーになる
-            self.class.undef_method(attr_sym)
-          end
-          if respond_to?("#{attr_sym}?")
-            self.class.undef_method("#{attr_sym}?")
-          end
+        elsif respond_to?("#{attr_sym}?")
+          # このモジュールのインスタンスメソッド name を未定義にします。
+          # undef_method(*name) -> self
+          # スーパークラスに同名のメソッドがあっても
+          # その呼び出しはエラーになる
+          self.class.undef_method("#{attr_sym}?")
         end
 
         @attr = value
@@ -112,13 +121,6 @@ end
 class TryOver3::A4
   class << self
     attr_accessor :runners
-    # def self.runners=(args)
-    #   @runners = args
-    # end
-
-    # def self.runners
-    #   @runners
-    # end
 
     # p.66 存在しない定数を参照すると、Rubyは定数の名前を  const_missing にシンボルとして渡す。
     # クラス名は単なる定数なので、ここではHogeという不明な参照が Module#const_missing に渡される。

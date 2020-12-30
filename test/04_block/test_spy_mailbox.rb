@@ -10,10 +10,18 @@ class TestEvilMailbox < MiniTest::Test
   end
 
   def test_send_mail
+    # expect(name, retval, args = []) -> self[permalink][rdoc]
+    # モックを構築するメソッドです。
+    # [PARAM] name: メソッド名を指定します。
+    # [PARAM] retval: 返り値として期待する値を指定します。
+    # [PARAM] args: 引数として期待する値を配列で指定します。
     mb, mock = evil_mailbox do
       expect :send_mail, true, ["ppyd", "hello"]
     end
     mb.send_mail("ppyd", "hello")
+    # verify -> true
+    # モックの検証を行います。
+    # [EXCEPTION] MockExpectationError: モックの検証に失敗した場合に発生します。
     mock.verify
   end
 

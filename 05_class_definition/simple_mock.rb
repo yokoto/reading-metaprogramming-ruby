@@ -37,3 +37,37 @@
 # obj.imitated_method #=> true
 # obj.called_times(:imitated_method) #=> 2
 # ```
+# https://github.com/willnet/reading-metaprogramming-ruby/blob/try/05_class_definition/simple_mock.rb
+module SimpleMock
+  class << self
+    def mock(obj)
+      obj.extend(SimpleMock)
+    end
+
+    def new
+      mock(Object.new)
+    end
+  end
+
+  def expects(method_name, value)
+    define_singleton_method(method_name) do
+      @counter[method_name] += 1 if @counter&.key?(method_name)
+      value
+    end
+    @expects ||= []
+    @expects.push(method_name.to_sym)
+  end
+
+  def watch(method_name)
+    (@counter ||= {})[method_name] = 0
+
+    return if @expects&.include?(method_name.to_sym)
+    define_singleton_method(method_name) do
+      @counter[method_name] += 1 if @counter&.key?(method_name)
+    end
+  end
+
+  def called_times(method_name)
+    @counter[method_name]
+  end
+end

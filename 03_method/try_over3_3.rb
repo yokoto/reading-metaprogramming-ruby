@@ -84,15 +84,23 @@ end
 # https://github.com/meganemura/reading-metaprogramming-ruby/blob/6070de3ca9857a7ad346064d1ff29baec4842eaf/03_method/try_over3_3.rb#L59-L86
 module TryOver3::OriginalAccessor2
   def self.included(mod)
-    # Class オブジェクト（Classクラスのインスタンス）に対して特異メソッドを定義している。
+    # test_try_over3_3 の orignal_accessor_included_instance メソッドを参照。
+    # Class オブジェクト（クリーンルームのクラス定義）に対して特異メソッドを定義している。
+    # TryOver3::OriginalAccessor2 インクルードしたクラスにだけ
+    # my_attr_accessor が定義される。
     mod.define_singleton_method :my_attr_accessor do |attr_sym|
-      # Class オブジェクトの特異クラスにメソッドを定義している。
+      # self == mod
+      # つまり、include したクラスのインスタンスメソッドを定義している。
       define_method attr_sym do
         @attr
       end
 
       define_method "#{attr_sym}=" do |value|
+        @attr = value
+
         if [true, false].include?(value) && !respond_to?("#{attr_sym}?")
+          # なんで self.class ？
+          # Class オブジェクトではなく、Class クラスのインスタンスメソッドを定義している。
           self.class.define_method "#{attr_sym}?" do
             @attr == true
           end
@@ -103,8 +111,6 @@ module TryOver3::OriginalAccessor2
           # その呼び出しはエラーになる
           self.class.undef_method("#{attr_sym}?")
         end
-
-        @attr = value
       end
     end
   end
@@ -127,7 +133,10 @@ class TryOver3::A4
     def const_missing(const_name)
       return super unless self.runners.include?(const_name)
 
-      # そして、runnersが定数への参照を持っていれば、run という名前の特異メソッドを定義する。
+      # そして、runners が定数への参照を持っていれば、
+      # run という名前の特異メソッドを、
+      # （変数 const_name を共有する必要があるため、）
+      # フラットスコープを使ったクラス定義の中で定義する。
       Class.new do
         define_singleton_method(:run) { "run #{const_name}" }
       end
@@ -154,8 +163,15 @@ module TryOver3::TaskHelper
         block_return
       end
 
+      # https://docs.ruby-lang.org/ja/latest/method/Module/i/const_missing.html
+      # Module#const_missing
+      # const_missing(name)
+      # 定義されていない定数を参照したときに Ruby インタプリタがこのメソッドを呼びます。
       define_singleton_method(:const_missing) do |const_name|
+        # クラスマクロ task の引数をスネークケースからキャメルケースに変換
         new_klass_name = name.to_s.split("_").map{ |w| w[0] = w[0].upcase; w }.join
+        # 参照された定数がクラスマクロ task を使って定義されたものでなければ
+        # NameError となるため super としている。
         return super(const_name) if const_name.to_s != new_klass_name
         
         Class.new do

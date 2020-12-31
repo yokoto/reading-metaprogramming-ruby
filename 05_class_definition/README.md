@@ -138,8 +138,7 @@ end
 MyClass = c
 ```
 
-## Overview of 5.3 - 5.
-
+## Overview of 5.3 - 5.5.1
 
 ### 特異メソッド
 
@@ -360,7 +359,7 @@ MyClass.c # => "It works!"
 6. オブジェクトの特異クラスのスーパークラスは、オブジェクトのクラスである。クラスの特異クラスのスーパークラスはクラスのスーパークラスの特異クラスである。
 7. メソッドを呼び出すときは、Rubyはレシーバの本物のクラスに向かって「右へ」進み、継承チェーンを「上へ」進む。
 
-### クイズ：モジュールの不具合
+### クラス拡張・オブジェクト拡張と Object#extend
 
 モジュールをインクルードしてクラスメソッドを定義する方法を考える。
 
@@ -383,7 +382,6 @@ MyClass.my_method # NoMethodError!
 
 これを**クラス拡張**と呼ぶ。
 
-
 ```rb
 module MyModule
   def my_method; 'hello'; end
@@ -398,3 +396,159 @@ end
 MyClass.my_method # => "hello"
 ```
 
+普通のオブジェクトに適用した場合、**オブジェクト拡張** と呼ばれる。
+
+```rb
+module MyModule
+  def my_method; 'hello'; end
+end
+
+obj = Object.new
+
+class << obj
+  include MyModule
+end
+
+obj.my_method # => "hello"
+obj.singleton_methods # => [:my_method]
+```
+
+クラスやオブジェクトを拡張するために特異クラスをオープンするのは、あまり自然なことではないため、もう一つの技法がよく使われる。
+
+Rubyはクラス拡張とオブジェクト拡張のためのメソッドを提供している。  
+**Object#extend** は、レシーバの特異クラスにモジュールをインクルードするためのショートカットである。
+
+```rb
+module MyModule
+  def my_method; 'hello'; end
+end
+
+obj = Object.new
+obj.extend MyModule
+obj.my_method # => "hello"
+
+class MyClass
+  extend MyModule
+end
+
+MyClass.my_method # => "hello"
+```
+
+## Overview of 5.6 - 5章終わりまで
+
+### メソッドラッパー
+
+メソッドラッパーとは、メソッドの中にメソッドをラップする方法である。  
+ライブラリなど、直接編集できないメソッドがある場合、そのメソッドの周囲に機能を追加する方法。
+以下の3つの方法がある。
+
+1. アラウンドエイリアス
+2. Refinementsラッパー
+3. Prependラッパー
+
+### アラウンドエイリアス
+
+Module#alias_method を使えば、Rubyのメソッドにエイリアス（別名）をつけることができる。  
+alias_method を使うときは、メソッドの新しい名前を先に、メソッドの元の名前を後に書く。
+
+Module#alias_method の他に、alias キーワードもあるが、こちらはトップレベルでメソッドにエイリアスをつけるときに便利。
+
+下記の例では、String#length を再定義し、エイリアスが元のメソッドを参照している。
+
+```rb
+class String
+  alias_method :real_length, :length
+
+  def length
+    real_length > 5 ? 'long' : 'short'
+  end
+end
+
+"War and Peace".length # => "long"
+"War and Peace".real_length # => 13
+```
+
+アラウンドエイリアスは3つの手順で行う。
+
+1. メソッドにエイリアスをつける。
+2. メソッドを再定義する。
+3. 新しいメソッドから古いメソッドを呼び出す。
+
+アラウンドエイリアスには以下の欠点がある。
+
+1. 新しいメソッド名でクラス名を汚染してしまうこと（これはメソッドをエイリアスにした後に private にすれば解決できる）。
+2. 一種のモンキーパッチなので、メソッドの変更を考えていない既存のコードを破壊しかねないこと。
+
+#### Thor の例
+
+下記の例では、まず標準の Kernel#require メソッドにエイリアスをつけている（require_without_record）。  
+次に、require にモンキーパッチして、Rakefile から require されるファイルの名前を保管している。  
+最後に、元の require（今の require_without_record）を呼び出している。
+新しい require が、古い require の「周囲（アラウンド）をラップ」している。このトリックのことをアラウンドエイリアスと呼ぶ。
+
+```rb
+input = ARGV[0] || 'Rakefile'
+$requires = []
+
+module Kernel
+  def require_with_record(file)
+    $requires << file if caller[1] =~ /rake2thor:/
+    require_without_record file
+  end
+  alias_method :require_without_record, :require
+  alias_method :require, :require_with_record
+end
+
+load input
+```
+
+### Refinementsラッパー
+
+Refinements はクラスのコードにパッチを貼り付けるようなものであるが、アラウンドエイリアスの代わりに使うこともできる。  
+リファインしたメソッドから super を呼び出すと、元のリファインしていないメソッドが呼び出せる。
+
+下記の例では、String クラスをリファインして、length メソッドの周囲に機能を追加している。  
+あらゆるところに適用されるアラウンドエイリアスよりも、こちらの方が一般的に安全であると言える。
+
+```rb
+module StringRefinements
+  refine String do
+    def length
+      super > 5 ? 'long' : 'short'
+    end
+  end
+end
+
+using StringRefinements
+
+"War and Peace".length # => "long"
+```
+
+### Prependラッパー
+
+Module#prepend は include と似ているが、継承チェーンでインクルーダーの上ではなく下にモジュールが挿入されてるところが違う。  
+つまり、プリペンドしたモジュールがインクルーダーのメソッドをオーバーライドできる。  
+そして、元のメソッドは super で呼び出せる。  
+Refinements ラッパーのようにローカルなものではないが、Refinements ラッパーやアラウンドエイリアスよりも明示的できれいな方法である。
+
+```rb
+module ExplicitString
+  def length
+    super > 5 ? 'long' : 'short'
+  end
+end
+
+String.class_eval do
+  prepend ExplicitString
+end
+
+"War and Peace".length # => "long"
+```
+
+### まとめ
+
+* クラス定義が self（呼び出したメソッドのデフォルトのレシーバ）とカレントクラス（定義したメソッドのデフォルトの居場所）に与える影響。
+* 特異メソッドや特異クラス。オブジェクトモデルとメソッド探索。
+* クラスインスタンス変数、クラスマクロ、Prependラッパーなど。
+* クラスに関することはすべてモジュールにも当てはまる。
+  * カレントクラスはモジュールにも当てはまり、「クラスインスタンス変数」は「モジュールインスタンス変数」にもなる。

@@ -39,7 +39,7 @@ result # => MyClass
 * Module#class_eval （module_eval）
   * そこにあるクラスのコンテキストでブロックを評価する。
   * self とカレントクラスを変更する。
-    * BasicObject#instance_eval は self を変更するだけ（厳密にはカレントクラスをレシーバの特異クラスに変更している）。
+    * BasicObject#instance_eval は self を変更するだけ（厳密にはカレントクラスをレシーバの[特異クラス](https://github.com/yokoto/reading-metaprogramming-ruby/tree/solve/05_class_definition#%E7%89%B9%E7%95%B0%E3%82%AF%E3%83%A9%E3%82%B9)に変更している）。
   * クラスを参照している変数なら何でも使える。
     * class キーワードは定数を必要とする。
   * フラットスコープを持っているため、class_eval ブロックのスコープの外側にある変数も参照できる。

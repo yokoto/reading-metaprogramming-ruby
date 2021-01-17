@@ -413,6 +413,11 @@ end
 object = MyClass.new(1)
 m = object.method :my_method # Method オブジェクトを取得
 m.call # => 1
+
+# おまけ
+# https://youtu.be/6b3bAipw0Yg?t=289
+# https://docs.ruby-lang.org/ja/latest/method/Method/i/source_location.html
+m.source_location # => ソースコードのファイル名と行番号を配列で返す。
 ```
 
 ### UnboundMethod

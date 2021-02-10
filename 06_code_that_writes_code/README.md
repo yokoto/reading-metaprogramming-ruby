@@ -282,15 +282,338 @@ end
 
 ### クイズ：アトリビュートのチェック（手順１）
 
+開発計画を見返す。
+
+> 1. eval を使った add_checked_attribute という名前のカーネルメソッドを書いて、クラスに超シンプルな妥当性確認済みのアトリビュートを追加できるようにする。
+
+add_checked_attribute と attr_accessor の異なる点。
+
+1. attr_acccessor はクラスマクロだが、 add_checked_attribute はシンプルなカーネルメソッド。
+2. attr_accessor はC言語で書かれているが、 add_checked_attribute はRubyとコード文字列を使う。
+3. add_checked_attribute はアトリビュートの簡単な妥当性確認機能（アトリビュートが nil または false のときに、実行時例外を発生させるもの）がついている。
+
+下記は、上記の要件のテストケース。
+
+```rb
+require 'test/unit'
+
+class Person; end
+
+class TestCheckedAttribute < Test::Unit::TestCase
+  def setup
+    add_checked_attribute(Person, :age)
+    @bob = Person.new
+  end
+
+  def test_accepts_valid_values
+    @bob.age = 20
+    assert_equal 20, @bob.age
+  end
+
+  def test_refuses_nil_values
+    assert_raises RuntimeError, 'Invalid attribute' do
+      @bob.age = nil
+    end
+  end
+
+  def test_refuses_false_values
+    assert_raises RuntimeError, 'Invalid attribute' do
+      @bob.age = false
+    end
+  end
+end
+```
+
+下記は、上記のテストケースをパスさせる実装。
+
+my_attr= に nil または false を渡すと、値を確認して例外を発生するところが attr_accessor で生成されたものと異なる。
+
+```rb
+def add_checked_attribute(klass, attribute)
+  eval "
+    class #{klass}
+      def #{attribute}=(value)
+        raise 'Invalid attribute' unless value
+        @#{attribute} = value
+      end
+
+      def #{attribute}()
+        @#{attribute}
+      end
+    end
+  "
+end
+```
+
 ### クイズ：アトリビュートのチェック（手順2）
+
+> 2. add_checked_attribute をリファクタリングして、 eval を削除する。
+
+メソッドが将来的に公開された場合に備え、コードインジェクション攻撃の標的になるコード文字列を使わないで書き直す。
+
+下記の例では、クラスのコンテキストでアトリビュートを定義するために、class_eval を使い、メソッド名を実行時に決定するために動的メソッドを使っている。
+
+```rb
+def add_checked_attribute(klass, attribute)
+  klass.class_eval do
+    define_method "#{attribute}=" do |value|
+      raise 'Invalid attribute' unless value
+      instance_variable_set("@#{attribute}", value)
+    end
+
+    define_method attribute do
+      instance_variable_get "@#{attribute}"
+    end
+  end
+end
+```
 
 ### クイズ：アトリビュートのチェック（手順3）
 
+> 3. ブロックでアトリビュートの妥当性を確認する。
+
+下記は、上記の要件のテストケース。
+
+```rb
+require 'test/unit'
+
+class Person; end
+
+class TestCheckedAttribute < Test::Unit::TestCase
+  def setup
+    add_checked_attribute(Person, :age) {|v| v >= 18 }
+    @bob = Person.new
+  end
+
+  def test_accepts_valid_values
+    @bob.age = 20
+    assert_equal 20, @bob.age
+  end
+
+  def test_refuses_invalid_values
+    assert_raises RuntimeError, 'Invalid attribute' do
+      @bob.age = 17
+    end
+  end
+end
+```
+
+下記は、上記のテストケースをパスさせる実装。
+
+```rb
+def add_checked_attribute(klass, attribute, &validation)
+  klass.class_eval do
+    define_method "#{attribute}=" do |value|
+      raise 'Invalid attribute' unless validation.call(value)
+      instance_variable_set("@#{attribute}", value)
+    end
+
+    define_method attribute do
+      instance_variable_get "@#{attribute}"
+    end
+  end
+end
+```
+
 ### クイズ：アトリビュートのチェック（手順4）
+
+> 4. add_checked_attribute をすべてのクラスで利用可能な attr_checked という名前のクラスマクロに変更する。
+
+下記は、上記の要件のテストケース。
+
+```rb
+require 'test/unit'
+
+class Person
+  attr_checked :age do |v|
+    v >= 18
+  end
+end
+
+class TestCheckedAttributes < Test::Unit::TestCase
+  def setup
+    @bob = Person.new
+  end
+
+  def test_accepts_valid_values
+    @bob.age = 20
+    assert_equal 20, @bob.age
+  end
+
+  def test_reuses_invalid_values
+    assert_raises RuntimeError, 'Invalid attribute' do
+      @bob.age = 17
+    end
+  end
+end
+```
+
+下記は、上記のテストケースをパスさせる実装。
+
+attr_checked をあらゆるクラス定義で使うには、Class または Module のインスタンスメソッドにすれば良い。
+
+このコードでは、メソッドが実行されるときにはクラスが self の役割を担っているので、 class_eval を呼び出す必要がない。
+
+```rb
+class Class
+  def attr_checked(attribute, &validation)
+    define_method "#{attribute}=" do |value|
+      raise 'Invalid attribute' unless validation.call(value)
+    end
+
+    define_method attribute do
+      instance_variable_get "@#{attribute}"
+    end
+  end
+end
+```
 
 ### フックメソッド
 
+* 特定のイベントにフックを掛けるメソッド。
+  * inherited メソッドは Class のインスタンスメソッドで、クラスが継承されたときに Ruby が呼び出す。
+  * 自分のコードでオーバーライドして使う。
+
+```rb
+class String
+  def self.inherited(subclass)
+    puts "#{self} は #{subclass} に継承された"
+  end
+end
+
+class MyString < String; end
+
+# => String は MyString に継承された
+```
+
+#### その他のフック
+
+* Module#included
+* Module#prepended
+
+```rb
+module M1
+  def self.included(othermod)
+    puts "M1 は #{othermod} にインクルードされた"
+  end
+end
+
+module M2
+  def self.prepended(othermod)
+    puts "M2 は #{othermod} にプリペンドされた"
+  end
+end
+
+class C
+  include M1
+  prepend M2
+end
+
+# => M1 は C にインクルードされた
+#   M2 は C にプリペンドされた
+```
+
+* Module#extended
+* Module#method_added
+* Module#method_removed
+* Module#method_undefined
+
+```rb
+module M
+  def self.method_added(method)
+    puts "新しいメソッド：M#{method}"
+  end
+
+  def my_method; end
+end
+
+# => 新しいメソッド：M#my_method
+```
+
+これらのフックは、オブジェクトのクラスに住むインスタンスメソッドにしか使えず、オブジェクトの特異クラスに住む特異メソッドでは動作しないので、特異メソッドのイベントをキャッチするには下記のメソッドを使う。
+
+* Kernel#singleton_method_added
+* Kernel#singleton_method_removed
+* Kernel#singleton_method_undefined
+
+### 標準メソッドにプラグイン
+
+```rb
+module M; end
+
+class C
+  def self.include(*modules)
+    puts "Called: C.include(#{modules})"
+    super
+  end
+
+  include M
+end
+
+# => Called: C.include(M)
+```
+
+### VCRの例
+
 ### クイズ：アトリビュートのチェック（手順5）
+
+> 5. フックを使って任意のクラスに attr_checked を追加するモジュールを書く。
+
+下記は、上記の要件のテストケース。
+
+```rb
+require 'test/unit'
+
+class Person
+  include CheckedAttributes
+
+attr_checked :age do |v|
+    v >= 18
+  end
+end
+
+class TestCheckedAttributes < Test::Unit::TestCase
+  def setup
+    @bob = Person.new
+  end
+
+  def test_accepts_valid_values
+    @bob.age = 18
+    assert_equal 18, @bob.age
+  end
+
+  def test_reuses_invalid_values
+    assert_raises RuntimeError, 'Invalid attribute' do
+      @bob.age = 17
+    end
+  end
+end
+```
+
+下記は、上記のテストケースをパスさせる実装。
+
+```rb
+module CheckedAttributes
+  def self.included(base)
+    base.extend ClassMethods
+  end
+
+  module ClassMethods
+    def attr_checked(attribute, &validation)
+      define_method "#{attribute}=" do |value|
+        raise 'Invalid attribute' unless validation.call(value)
+        instance_variable_set("@#{attribute}", value)
+      end
+
+      define_method attribute do
+        instance_variable_get "@#{attribute}"
+      end
+    end
+  end
+end
+```
 
 ### まとめ
 
+* eval メソッドとその問題と回避策
+* Rubyのフックメソッド

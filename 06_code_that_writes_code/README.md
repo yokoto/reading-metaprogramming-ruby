@@ -538,6 +538,15 @@ end
 
 ### 標準メソッドにプラグイン
 
+Module#include をオーバーライドすることで、Module#included と同様モジュールがインクルードされたときにコードを実行できる。  
+
+一方で、下記のような違いがある。
+
+* Module#included はデフォルトの実装は空。
+* Module#include は、モジュールを実際にインクルードしなければいけないため、ベースとなる Module#include の実装を super を使って呼び出す必要がある。
+
+オーバーライドではなく、アラウンドエイリアスを使って、通常のメソッドをフックメソッドに変える方法もある。
+
 ```rb
 module M; end
 
@@ -554,6 +563,45 @@ end
 ```
 
 ### VCRの例
+
+VCR は、HTTP呼び出しを記録および再生する gem。
+
+VCR の Request クラスは、 Normalizers::Body モジュールをインクルードしている。
+
+```rb
+module VCR
+  class Request # ...
+    include Normalizers::Body
+    # ...
+```
+
+Body モジュールは、HTTP メッセージボディーを扱う body_fromなどのメソッドを定義している。  
+
+Body モジュールをインクルードすると、これらのメソッドが Request クラスのメソッドになる。  
+
+下記の例では、クラスがモジュールをインクルードしたときに定義されるインスタンスメソッドを、フックメソッドと extend メソッドを使って、Request の特異クラスにミックスインしている。
+
+```rb
+module VCR
+  module Normalizers
+    module Body
+      def self.included(klass)
+        klass.extend ClassMethods
+      end
+
+      module ClassMethods
+        def body_from(hash_or_string)
+          # ...
+```
+
+上記の例は、下記のような一連のイベントをトリガーしている。
+
+* Ruby が、Body の included フックを呼び出す。
+* フックが Request に戻り、ClassMethods モジュールをエクステンドする。
+* extend メソッドが、ClassMethods のメソッドを Request の特異クラスにインクルードする。
+
+結果、body_from などのインスタンスメソッドは Request の特異クラスにミックスインされる。  
+クラスメソッドとフックを組み合わせたイディオムは、さまざまな gem において非常によく使われている。
 
 ### クイズ：アトリビュートのチェック（手順5）
 
